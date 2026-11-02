@@ -1,0 +1,73 @@
+name: Build HALLWAYS Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.2.2
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Prepare Godot project
+        shell: bash
+        run: |
+          mkdir -p game
+          unzip -q HALLWAYS_0.1_CONTROLES_ANDROID.zip -d game
+          cat > game/export_presets.cfg <<'EOF'
+          [preset.0]
+          name="Android"
+          platform="Android"
+          runnable=true
+          dedicated_server=false
+          custom_features=""
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
+          export_path="build/HALLWAYS.apk"
+          encryption_include_filters=""
+          encryption_exclude_filters=""
+          encrypt_pck=false
+          encrypt_directory=false
+
+          [preset.0.options]
+          custom_template/debug=""
+          custom_template/release=""
+          gradle_build/use_gradle_build=false
+          gradle_build/export_format=0
+          gradle_build/min_sdk=23
+          gradle_build/target_sdk=34
+          package/unique_name="org.hallways.game"
+          package/name="HALLWAYS"
+          version/code=1
+          version/name="0.1"
+          screen/immersive_mode=true
+          architectures/armeabi-v7a=false
+          architectures/arm64-v8a=true
+          EOF
+          mkdir -p game/build
+
+      - name: Export debug APK
+        run: godot --headless --path game --export-debug "Android" game/build/HALLWAYS.apk
+
+      - name: Publish APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HALLWAYS-Android-debug
+          path: game/build/HALLWAYS.apk
+          if-no-files-found: error
+apk"
+          encryption_include_filters=""
+          encryption_exclude_filters=""
+          encrypt_pck=false
+          encrypt_directory=false
+
+          [preset.0.options]
+          custom_template/debug=""
+          custom_template/release=""
+          

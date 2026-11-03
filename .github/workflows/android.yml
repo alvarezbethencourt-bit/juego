@@ -1,24 +1,29 @@
+
 name: Build HALLWAYS Android APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.2.2
+
     steps:
       - name: Download repository
         uses: actions/checkout@v4
 
-      - name: Prepare Godot project
+      - name: Prepare project
         shell: bash
         run: |
           mkdir -p game
           unzip -q HALLWAYS_0.1_CONTROLES_ANDROID.zip -d game
+          mkdir -p game/build
+
           cat > game/export_presets.cfg <<'EOF'
           [preset.0]
           name="Android"
@@ -50,24 +55,14 @@ jobs:
           architectures/armeabi-v7a=false
           architectures/arm64-v8a=true
           EOF
-          mkdir -p game/build
 
-      - name: Export debug APK
+      - name: Export Android APK
         run: godot --headless --path game --export-debug "Android" game/build/HALLWAYS.apk
 
-      - name: Publish APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: HALLWAYS-Android-debug
           path: game/build/HALLWAYS.apk
           if-no-files-found: error
-apk"
-          encryption_include_filters=""
-          encryption_exclude_filters=""
-          encrypt_pck=false
-          encrypt_directory=false
-
-          [preset.0.options]
-          custom_template/debug=""
-          custom_template/release=""
-          
+      

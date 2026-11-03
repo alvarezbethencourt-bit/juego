@@ -17,14 +17,55 @@ jobs:
       - name: Download repository
         uses: actions/checkout@v4
 
+      - name: Install Godot Android templates
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.2.2.stable"
+
+          curl -L --fail -o /tmp/templates.tpz \
+            https://github.com/godotengine/godot-builds/releases/download/4.2.2-stable/Godot_v4.2.2-stable_export_templates.tpz
+
+          mkdir -p /tmp/godot-templates
+          unzip -q /tmp/templates.tpz -d /tmp/godot-templates
+
+          cp -a /tmp/godot-templates/templates/. \
+            "$HOME/.local/share/godot/export_templates/4.2.2.stable/"
+
+      - name: Configure Android
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.config/godot"
+
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<'EOF'
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
+          export/android/android_sdk_path = "/usr/lib/android-sdk"
+          export/android/debug_keystore = "/root/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
       - name: Prepare project
         shell: bash
         run: |
           mkdir -p game
           unzip -q HALLWAYS_0.1_CONTROLES_ANDROID.zip -d game
-          mkdir -p game/build
 
-          cat > game/export_presets.cfg <<'EOF'
+          PROJECT_FILE="$(find game -name project.godot -print -quit)"
+
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "No se encontró project.godot"
+            exit 1
+          fi
+
+          PROJECT_DIR="$(dirname "$PROJECT_FILE")"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          mkdir -p "$PROJECT_DIR/build"
+
+          cat > "$PROJECT_DIR/export_presets.cfg" <<'EOF'
           [preset.0]
           name="Android"
           platform="Android"
@@ -56,13 +97,16 @@ jobs:
           architectures/arm64-v8a=true
           EOF
 
+      - name: Import project
+        run: godot --headless --editor --path "$PROJECT_DIR" --import
+
       - name: Export Android APK
-        run: godot --headless --path game --export-debug "Android" game/build/HALLWAYS.apk
+        run: godot --headless --path "$PROJECT_DIR" --export-debug "Android" "$PROJECT_DIR/build/HALLWAYS.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: HALLWAYS-Android-debug
-          path: game/build/HALLWAYS.apk
+          path: ${{ env.PROJECT_DIR }}/build/HALLWAYS.apk
           if-no-files-found: error
-      
+          
